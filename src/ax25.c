@@ -132,7 +132,7 @@ ax25_read_packet(const struct ax25_io *io)
 	header->pid = pid;
 
 	packet->payload_length = frame->length - (addr_len + 2);
-	memcpy(packet->payload, frame + addr_len + 2, packet->payload_length);
+	memcpy(packet->payload, frame->data + addr_len + 2, packet->payload_length);
 
 	return packet;
 }

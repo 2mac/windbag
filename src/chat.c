@@ -29,6 +29,7 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,9 +38,41 @@
 #include "chat.h"
 #include "windbag.h"
 
-static int
-chat_write(struct windbag_config *config, struct ax25_io *aio)
+struct chat_config
 {
+	struct windbag_config *config;
+	struct ax25_io *aio;
+};
+
+static void *
+chat_read(struct chat_config *cc)
+{
+	struct windbag_config *config = cc->config;
+	struct ax25_io *aio = cc->aio;
+	struct windbag_packet packet;
+	int rc;
+
+	rc = windbag_packet_init(&packet);
+	if (rc)
+		return NULL;
+
+	for (;;)
+	{
+		if (!windbag_read_packet(&packet, aio))
+			continue;
+
+		printf("\n%s: %s\n", packet.header.src_addr, (char *) packet.payload->data);
+	}
+
+	windbag_packet_cleanup(&packet);
+	return NULL;
+}
+
+static int
+chat_write(struct chat_config *cc)
+{
+	struct windbag_config *config = cc->config;
+	struct ax25_io *aio = cc->aio;
 	struct ax25_header header;
 	struct bigbuffer *message;
 	char buf[513];
@@ -84,6 +117,7 @@ chat_write(struct windbag_config *config, struct ax25_io *aio)
 			{
 				fprintf(stderr, "Error writing to TNC\n");
 				done = 1;
+				rc = 1;
 				break;
 			}
 			
@@ -96,11 +130,29 @@ chat_write(struct windbag_config *config, struct ax25_io *aio)
 		bigbuffer_append(message, (uint8_t *) next, count - (next - buf));
 	}
 
+	bigbuffer_free(message);
 	return rc;
 }
 
 int
 chat(struct windbag_config *config, struct ax25_io *aio)
 {
-	return chat_write(config, aio);
+	struct chat_config cc;
+	pthread_t read_thread;
+	int rc;
+	
+	cc.config = config;
+	cc.aio = aio;
+
+	rc = pthread_create(&read_thread, NULL, chat_read, &cc);
+	if (rc)
+	{
+		fprintf(stderr, "Error starting read thread\n");
+		return rc;
+	}
+	
+	rc = chat_write(&cc);
+	pthread_cancel(read_thread);
+
+	return rc;
 }

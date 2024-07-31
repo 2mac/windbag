@@ -159,8 +159,7 @@ bigbuffer_split(const struct bigbuffer *src, unsigned int max_length, unsigned i
 		if (buffers[index]->length == 0) /* max_length is too small */
 			goto fail;
 
-		++index;
-		written += buffers[index]->length;
+		written += buffers[index++]->length;
 	} while (written < src->length);
 
 	*n_buffers = index;

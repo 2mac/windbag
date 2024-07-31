@@ -112,18 +112,22 @@ chat_write(struct chat_config *cc)
 			}
 
 			bigbuffer_append(message, (uint8_t *) next, line_length);
-			written = windbag_send_message(aio, &header, message);
-			if (written < 0)
+			if (message->length > 0)
 			{
-				fprintf(stderr, "Error writing to TNC\n");
-				done = 1;
-				rc = 1;
-				break;
+				written = windbag_send_message(aio, &header, message);
+				if (written < 0)
+				{
+					fprintf(stderr, "Error writing to TNC\n");
+					done = 1;
+					rc = 1;
+					break;
+				}
+				
+				printf("Wrote %d bytes\n", written);
+
+				message->length = 0;
 			}
 			
-			printf("Wrote %d bytes\n", written);
-
-			message->length = 0;
 			next = line_end + 1;
 		}
 

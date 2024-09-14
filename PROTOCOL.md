@@ -18,10 +18,11 @@ Flags
 
 The flags field takes this form (most significant bit on the left):
 
-|Reserved|Multipart|
-|---|---|
-| 7 bits | 1 bit|
+|Reserved|Signature|Multipart|
+|---|---|---|
+| 6 bits | 1 bit | 1 bit |
 
+- The signature flag indicates that the header includes the signature field (see Optional Fields below).
 - The multipart flag indicates the packet's payload is split into multiple parts to be sent in other packets. The optional multipart index header fields will be present (see Optional Fields below).
 
 Optional Fields
@@ -29,5 +30,8 @@ Optional Fields
 
 The following optional fields are defined and always appear in the given order, when present:
 
+- Signature
+    - This field consists of one octet representing the length of the signature which follows, and
+    - The Ed25519 signature of the SHA-256 hash of the payload (the multipart field, timestamp, and message content, in that order).
 - Multipart
     - This field consists of two octets: the index of this packet and the index of the final packet in the series, respectively.

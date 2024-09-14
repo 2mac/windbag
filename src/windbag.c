@@ -29,13 +29,19 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#include <endian.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <time.h>
 
+#include "os.h"
 #include "windbag.h"
+
+#ifdef OS_WINDOWS
+# define htole32(N) ((uint32_t) N)
+#else
+# include <endian.h>
+#endif
 
 const uint8_t MAGIC_NUMBER[2] = { 0xA4, 0x55 };
 #define MIN_PAYLOAD_LENGTH 8
@@ -46,8 +52,7 @@ const uint8_t MAGIC_NUMBER[2] = { 0xA4, 0x55 };
 #define MULTIPART_INDEX (TIMESTAMP_INDEX - 2)
 
 #define FLAG_MULTIPART 0x01
-#define FLAG_COMPRESSED 0x02
-#define FLAG_SIGNED 0x04
+#define FLAG_SIGNED 0x02
 
 int
 windbag_packet_init(struct windbag_packet *packet)

@@ -37,11 +37,20 @@
 #include "ax25.h"
 #include "bigbuffer.h"
 
+enum windbag_signature_status
+{
+	NO_SIGNATURE,
+	GOOD_SIGNATURE,
+	UNKNOWN_SIGNATURE,
+	BAD_SIGNATURE
+};
+
 struct windbag_packet
 {
 	struct ax25_header header;
 	uint32_t timestamp;
 	struct bigbuffer *payload;
+	enum windbag_signature_status signature_status;
 };
 
 int

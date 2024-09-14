@@ -29,23 +29,14 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CONFIG_H
-#define WB_CONFIG_H
+#ifndef WB_OS_H
+#define WB_OS_H
 
-#include <stdio.h>
-
-#include "ax25.h"
-
-struct windbag_config
-{
-	char my_call[AX25_ADDR_MAX];
-	char digi_path[AX25_MAX_ADDRS - 2][AX25_ADDR_MAX];
-};
-
-const char *
-default_config_dir_path(char *buf, int bufsize);
-
-int
-read_config(struct windbag_config *config, FILE *f);
+#if defined(_WIN32)
+# define OS_WINDOWS
+# define FILE_SEPARATOR "\\"
+#else
+# define FILE_SEPARATOR "/"
+#endif
 
 #endif

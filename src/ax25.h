@@ -36,6 +36,8 @@
 #include <sys/types.h>
 
 #define AX25_ADDR_MAX 10
+#define AX25_CALL_MAX 6
+#define AX25_SSID_MAX 15
 #define AX25_ADDR_SIZE 7
 #define AX25_MAX_ADDRS 4
 #define AX25_HEADER_MAX (3 + AX25_ADDR_SIZE * AX25_MAX_ADDRS)

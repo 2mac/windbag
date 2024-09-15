@@ -48,8 +48,12 @@ static const unsigned int speeds[][2] = {
 	{ 9600, B9600 },
 	{ 19200, B19200 },
 	{ 38400, B38400 },
+#ifdef B57600
 	{ 57600, B57600 },
+#endif
+#ifdef B115200
 	{ 115200, B115200 }
+#endif
 };
 
 static const int num_speeds = sizeof speeds / sizeof speeds[0];
@@ -59,7 +63,7 @@ strtospeed(const char *s)
 {
 	unsigned int parsed;
 	int rc, i;
-	
+
 	rc = sscanf(s, "%u", &parsed);
 	if (rc != 1)
 		return B0;
@@ -68,7 +72,7 @@ strtospeed(const char *s)
 		if (speeds[i][0] == parsed)
 			return speeds[i][1];
 
-	return B0;
+	return parsed;
 }
 
 int
@@ -96,7 +100,7 @@ main(int argc, char *argv[])
 				speed = B9600;
 			}
 			break;
-		
+
 		case 'c':
 			strcpy(config.my_call, optarg);
 			break;

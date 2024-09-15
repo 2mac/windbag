@@ -29,27 +29,16 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CONFIG_H
-#define WB_CONFIG_H
+#ifndef WB_BASE64_H
+#define WB_BASE64_H
 
-#include <sodium.h>
-#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#include "ax25.h"
+char *
+base64_encode(char *dest, size_t *bufsize, const uint8_t *src, size_t src_size);
 
-struct windbag_config
-{
-	char my_call[AX25_ADDR_MAX];
-	char digi_path[AX25_MAX_ADDRS - 2][AX25_ADDR_MAX];
-
-	unsigned char pubkey[crypto_sign_PUBLICKEYBYTES];
-	unsigned char seckey[crypto_sign_SECRETKEYBYTES];
-};
-
-const char *
-default_config_dir_path(char *buf, int bufsize);
-
-int
-read_config(struct windbag_config *config, FILE *f);
+uint8_t *
+base64_decode(size_t *dest_size, const char *src);
 
 #endif

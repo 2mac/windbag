@@ -34,14 +34,8 @@
 #include <strings.h>
 #include <time.h>
 
-#include "os.h"
+#include "endian.h"
 #include "windbag.h"
-
-#ifdef OS_WINDOWS
-# define htole32(N) ((uint32_t) N)
-#else
-# include <endian.h>
-#endif
 
 const uint8_t MAGIC_NUMBER[2] = { 0xA4, 0x55 };
 #define MIN_PAYLOAD_LENGTH 8

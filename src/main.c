@@ -30,79 +30,80 @@
  */
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "ax25.h"
+#include "callsign.h"
 #include "chat.h"
 #include "config.h"
-#include "kiss.h"
+#include "os.h"
+#include "tty.h"
 #include "windbag.h"
 
-static const unsigned int speeds[][2] = {
-	{ 300, B300 },
-	{ 1200, B1200 },
-	{ 2400, B2400 },
-	{ 4800, B4800 },
-	{ 9600, B9600 },
-	{ 19200, B19200 },
-	{ 38400, B38400 },
-#ifdef B57600
-	{ 57600, B57600 },
-#endif
-#ifdef B115200
-	{ 115200, B115200 }
-#endif
+typedef struct
+{
+	const char *name;
+	int (*run)(struct windbag_config *);
+} COMMAND;
+
+static const COMMAND COMMANDS[] = {
+	{ "chat", chat }
 };
 
-static const int num_speeds = sizeof speeds / sizeof speeds[0];
-
-static speed_t
-strtospeed(const char *s)
+static int
+read_config_file(const char *config_path, struct windbag_config *config)
 {
-	unsigned int parsed;
-	int rc, i;
+	int rc;
+	FILE *config_file = fopen(config_path, "r");
+	if (!config_file)
+	{
+		if (errno != ENOENT)
+			fprintf(stderr, "Error opening %s: %s\n", config_path,
+				strerror(errno));
 
-	rc = sscanf(s, "%u", &parsed);
-	if (rc != 1)
-		return B0;
+		return 1;
+	}
 
-	for (i = 0; i < num_speeds; ++i)
-		if (speeds[i][0] == parsed)
-			return speeds[i][1];
+	rc = read_config(config, config_file);
+	fclose(config_file);
+	if (rc)
+		return rc;
 
-	return parsed;
+	return 0;
 }
 
 int
 main(int argc, char *argv[])
 {
 	struct windbag_config config;
-	speed_t speed = B9600;
-	char *tty = NULL, *p;
-	struct io io;
-	KISS_TNC tnc;
-	struct ax25_io aio;
-	int rc, opt;
+	const char *command = "chat";
+	speed_t speed = 0;
+	char *tty = NULL, *my_call = NULL, *config_path = NULL;
+	int rc, opt, found;
+	unsigned int i;
 
-	config.my_call[0] = '\0';
-
-	while ((opt = getopt(argc, argv, "b:c:t:")) != -1)
+	while ((opt = getopt(argc, argv, "C:b:c:t:")) != -1)
 	{
 		switch (opt)
 		{
+		case 'C':
+			config_path = optarg;
+			break;
+
 		case 'b':
 			speed = strtospeed(optarg);
 			if (speed == B0)
 			{
-				fprintf(stderr, "Unknown baud rate %s. Defaulting to 9600.\n", optarg);
-				speed = B9600;
+				fprintf(stderr,
+					"Bad baud rate %s. Defaulting to 9600.\n",
+					optarg);
 			}
 			break;
 
 		case 'c':
-			strcpy(config.my_call, optarg);
+			my_call = optarg;
 			break;
 
 		case 't':
@@ -114,31 +115,72 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (config.my_call[0] == '\0')
+	if (config_path)
 	{
-		fprintf(stderr, "Set a call sign with -c\n");
-		return 1;
+		if (access(config_path, F_OK) != 0)
+		{
+			fprintf(stderr, "File '%s' does not exist\n",
+				config_path);
+			return 1;
+		}
+
+		rc = read_config_file(config_path, &config);
+	}
+	else
+	{
+		char buf[MAX_FILE_PATH];
+		config_path = default_config_dir_path(buf, sizeof buf);
+		strncat(config_path, FILE_SEPARATOR, sizeof buf - strlen(buf));
+		strncat(config_path, CONFIG_FILE_NAME, sizeof buf - strlen(buf));
+
+		if (access(config_path, F_OK) == 0)
+			rc = read_config_file(config_path, &config);
+		else
+			rc = 0;
 	}
 
-	if (!tty)
+	if (rc)
+		return rc;
+
+	if (my_call)
 	{
-		fprintf(stderr, "Set the TNC device with -t\n");
-		return 1;
+		rc = validate_callsign(my_call);
+		if (rc)
+		{
+			fprintf(stderr, "Error in call sign '%s': %s\n",
+				my_call, callsign_strerror(rc));
+			return 1;
+		}
+
+		sanitize_callsign(my_call);
+		strcpy(config.my_call, my_call);
 	}
 
-	kiss_init_serial(&tnc, &io, tty, speed);
+	if (tty)
+		strncpy(config.tty, tty, sizeof config.tty - 1);
 
-	aio.read_frame = (ax25_frame_reader) kiss_read_frame;
-	aio.write_frame = (ax25_frame_writer) kiss_write_frame;
-	aio.tnc = (void *) &tnc;
+	if (speed)
+		config.tty_speed = speed;
 
-	config.digi_path[0][0] = '\0';
+	if (optind < argc)
+		command = argv[optind];
 
-	p = config.my_call;
-	while (*p != '\0')
-		*(p++) = toupper(*p);
+	found = 0;
+	for (i = 0; i < (sizeof COMMANDS / sizeof (COMMAND)); ++i)
+	{
+		if (strcmp(command, COMMANDS[i].name) == 0)
+		{
+			found = 1;
+			rc = COMMANDS[i].run(&config);
+			break;
+		}
+	}
 
-	rc = chat(&config, &aio);
+	if (!found)
+	{
+		fprintf(stderr, "Command not found: %s\n", command);
+		rc = 1;
+	}
 
 	return rc;
 }

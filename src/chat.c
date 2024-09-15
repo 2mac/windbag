@@ -36,6 +36,7 @@
 
 #include "bigbuffer.h"
 #include "chat.h"
+#include "kiss.h"
 #include "windbag.h"
 
 struct chat_config
@@ -45,9 +46,9 @@ struct chat_config
 };
 
 static void *
-chat_read(struct chat_config *cc)
+chat_read(void *input)
 {
-	struct windbag_config *config = cc->config;
+	struct chat_config *cc = (struct chat_config *) input;
 	struct ax25_io *aio = cc->aio;
 	struct windbag_packet packet;
 	int rc;
@@ -94,7 +95,7 @@ chat_write(struct chat_config *cc)
 		char *next = buf, *line_end = NULL;
 
 		printf("> ");
-		
+
 		fgets(buf, sizeof buf, stdin);
 		count = strlen(buf);
 
@@ -122,12 +123,12 @@ chat_write(struct chat_config *cc)
 					rc = 1;
 					break;
 				}
-				
+
 				printf("Wrote %d bytes\n", written);
 
 				message->length = 0;
 			}
-			
+
 			next = line_end + 1;
 		}
 
@@ -139,14 +140,35 @@ chat_write(struct chat_config *cc)
 }
 
 int
-chat(struct windbag_config *config, struct ax25_io *aio)
+chat(struct windbag_config *config)
 {
+	struct io io;
+	struct ax25_io aio;
+	KISS_TNC tnc;
 	struct chat_config cc;
 	pthread_t read_thread;
 	int rc;
-	
+
+	if (config->my_call[0] == '\0')
+	{
+		fprintf(stderr, "Set a call sign with -c\n");
+		return 1;
+	}
+
+	if (config->tty[0] == '\0')
+	{
+		fprintf(stderr, "Set the TNC device with -t\n");
+		return 1;
+	}
+
+	kiss_init_serial(&tnc, &io, config->tty, config->tty_speed);
+
+	aio.read_frame = (ax25_frame_reader) kiss_read_frame;
+	aio.write_frame = (ax25_frame_writer) kiss_write_frame;
+	aio.tnc = (void *) &tnc;
+
 	cc.config = config;
-	cc.aio = aio;
+	cc.aio = &aio;
 
 	rc = pthread_create(&read_thread, NULL, chat_read, &cc);
 	if (rc)
@@ -154,7 +176,7 @@ chat(struct windbag_config *config, struct ax25_io *aio)
 		fprintf(stderr, "Error starting read thread\n");
 		return rc;
 	}
-	
+
 	rc = chat_write(&cc);
 	pthread_cancel(read_thread);
 

@@ -29,13 +29,41 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CHAT_H
-#define WB_CHAT_H
+#include <stdio.h>
 
-#include "ax25.h"
-#include "config.h"
+#include "tty.h"
 
-int
-chat(struct windbag_config *config);
-
+static const unsigned int speeds[][2] = {
+	{ 300, B300 },
+	{ 1200, B1200 },
+	{ 2400, B2400 },
+	{ 4800, B4800 },
+	{ 9600, B9600 },
+	{ 19200, B19200 },
+	{ 38400, B38400 },
+#ifdef B57600
+	{ 57600, B57600 },
 #endif
+#ifdef B115200
+	{ 115200, B115200 }
+#endif
+};
+
+static const int num_speeds = sizeof speeds / sizeof speeds[0];
+
+speed_t
+strtospeed(const char *s)
+{
+	unsigned int parsed;
+	int rc, i;
+
+	rc = sscanf(s, "%u", &parsed);
+	if (rc != 1)
+		return B0;
+
+	for (i = 0; i < num_speeds; ++i)
+		if (speeds[i][0] == parsed)
+			return speeds[i][1];
+
+	return parsed;
+}

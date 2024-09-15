@@ -29,13 +29,12 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CHAT_H
-#define WB_CHAT_H
+#ifndef WB_TTY_H
+#define WB_TTY_H
 
-#include "ax25.h"
-#include "config.h"
+#include <termios.h>
 
-int
-chat(struct windbag_config *config);
+speed_t
+strtospeed(const char *s);
 
 #endif

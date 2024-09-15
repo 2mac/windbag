@@ -37,16 +37,27 @@
 
 #include "ax25.h"
 
+#define MAX_FILE_PATH 1025
+
+extern const char * const CONFIG_FILE_NAME;
+extern const char * const DEFAULT_PUBKEY;
+extern const char * const DEFAULT_SECKEY;
+
 struct windbag_config
 {
 	char my_call[AX25_ADDR_MAX];
 	char digi_path[AX25_MAX_ADDRS - 2][AX25_ADDR_MAX];
+	char tty[MAX_FILE_PATH];
+	unsigned int tty_speed;
 
+	int sign_messages;
+	char pubkey_path[MAX_FILE_PATH];
+	char seckey_path[MAX_FILE_PATH];
 	unsigned char pubkey[crypto_sign_PUBLICKEYBYTES];
 	unsigned char seckey[crypto_sign_SECRETKEYBYTES];
 };
 
-const char *
+char *
 default_config_dir_path(char *buf, int bufsize);
 
 int

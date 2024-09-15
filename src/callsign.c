@@ -29,13 +29,80 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CHAT_H
-#define WB_CHAT_H
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ax25.h"
-#include "config.h"
+#include "callsign.h"
+
+const char *
+callsign_strerror(int error)
+{
+	switch (error)
+	{
+	case NO_ERROR:
+		return "No error";
+
+	case SYNTAX:
+		return "Syntax error in call sign";
+
+	case TOO_LONG:
+		return "Call sign too long";
+
+	case SSID:
+		return "SSID must be between 0 and 15";
+	}
+
+	return NULL;
+}
 
 int
-chat(struct windbag_config *config);
+validate_callsign(const char *callsign)
+{
+	const char *hyphen;
+	size_t len;
 
-#endif
+	len = strlen(callsign);
+	if (len == 0)
+		return SYNTAX;
+
+	if (len > AX25_ADDR_MAX)
+		return TOO_LONG;
+
+	hyphen = strchr(callsign, '-');
+	if (hyphen)
+	{
+		unsigned int ssid;
+		int read;
+
+		if ((hyphen - callsign) > AX25_CALL_MAX)
+			return TOO_LONG;
+
+		read = sscanf(hyphen, "-%u", &ssid);
+		if (read != 1)
+			return SYNTAX;
+
+		if (ssid > AX25_SSID_MAX)
+			return SSID;
+	}
+	else
+	{
+		if (len > AX25_CALL_MAX)
+			return TOO_LONG;
+	}
+
+	return 0;
+}
+
+void
+sanitize_callsign(char *callsign)
+{
+	char *p = callsign;
+	while (*p)
+	{
+		*p = toupper(*p);
+		++p;
+	}
+}

@@ -29,13 +29,24 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CHAT_H
-#define WB_CHAT_H
+#ifndef WB_CALLSIGN_H
+#define WB_CALLSIGN_H
 
-#include "ax25.h"
-#include "config.h"
+enum callsign_error
+{
+	NO_ERROR,
+	SYNTAX,
+	TOO_LONG,
+	SSID
+};
 
 int
-chat(struct windbag_config *config);
+validate_callsign(const char *callsign);
+
+const char *
+callsign_strerror(int error);
+
+void
+sanitize_callsign(char *callsign);
 
 #endif

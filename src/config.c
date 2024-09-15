@@ -33,11 +33,18 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 
+#include "callsign.h"
 #include "config.h"
 #include "os.h"
+#include "tty.h"
 
-const char *
+const char * const CONFIG_FILE_NAME = "windbag.conf";
+const char * const DEFAULT_PUBKEY = "ed25519.pub";
+const char * const DEFAULT_SECKEY = "ed25519.sec";
+
+char *
 default_config_dir_path(char *buf, int bufsize)
 {
 	char *base_dir;
@@ -71,73 +78,6 @@ default_config_dir_path(char *buf, int bufsize)
 	return buf;
 }
 
-enum callsign_error
-{
-	NO_ERROR,
-	SYNTAX,
-	TOO_LONG,
-	SSID
-};
-
-static const char *
-callsign_strerror(int error)
-{
-	switch (error)
-	{
-	case NO_ERROR:
-		return "No error";
-
-	case SYNTAX:
-		return "Syntax error in call sign";
-
-	case TOO_LONG:
-		return "Call sign too long";
-
-	case SSID:
-		return "SSID must be between 0 and 15";
-	}
-
-	return NULL;
-}
-
-static int
-validate_callsign(const char *callsign)
-{
-	const char *hyphen;
-	size_t len;
-
-	len = strlen(callsign);
-	if (len == 0)
-		return SYNTAX;
-
-	if (len > AX25_ADDR_MAX)
-		return TOO_LONG;
-
-	hyphen = strchr(callsign, '-');
-	if (hyphen)
-	{
-		unsigned int ssid;
-		int read;
-
-		if ((hyphen - callsign) > AX25_CALL_MAX)
-			return TOO_LONG;
-
-		read = sscanf(hyphen, "-%u", &ssid);
-		if (read != 1)
-			return SYNTAX;
-
-		if (ssid > AX25_SSID_MAX)
-			return SSID;
-	}
-	else
-	{
-		if (len > AX25_CALL_MAX)
-			return TOO_LONG;
-	}
-
-	return 0;
-}
-
 static int
 set_mycall(struct windbag_config *config, const char *args)
 {
@@ -148,7 +88,8 @@ set_mycall(struct windbag_config *config, const char *args)
 		fprintf(stderr, "Error in mycall: %s\n", callsign_strerror(rc));
 	else
 		strcpy(config->my_call, args);
-	
+
+	sanitize_callsign(config->my_call);
 	return rc;
 }
 
@@ -190,11 +131,47 @@ set_digi_path(struct windbag_config *config, const char *args)
 			break;
 		}
 
+		sanitize_callsign(path[i]);
 		strcpy(config->digi_path[i], path[i]);
 	}
 
 	free(temp);
 	return rc;
+}
+
+static int
+set_tty(struct windbag_config *config, const char *args)
+{
+	strncpy(config->tty, args, sizeof config->tty - 1);
+	return 0;
+}
+
+static int
+set_tty_speed(struct windbag_config *config, const char *args)
+{
+	speed_t speed = strtospeed(args);
+	if (speed == B0)
+	{
+		fprintf(stderr, "Error parsing tty-speed '%s'\n", args);
+		return 1;
+	}
+
+	config->tty_speed = speed;
+	return 0;
+}
+
+static int
+set_pubkey_path(struct windbag_config *config, const char *args)
+{
+	strncpy(config->pubkey_path, args, sizeof config->pubkey_path - 1);
+	return 0;
+}
+
+static int
+set_seckey_path(struct windbag_config *config, const char *args)
+{
+	strncpy(config->seckey_path, args, sizeof config->seckey_path - 1);
+	return 0;
 }
 
 typedef struct config_setter
@@ -205,7 +182,12 @@ typedef struct config_setter
 
 static const SETTER SETTERS[] = {
 	{ "mycall", set_mycall },
-	{ "digi-path", set_digi_path }
+	{ "digi-path", set_digi_path },
+	{ "tty", set_tty },
+	{ "tty-speed", set_tty_speed },
+	{ "public-key", set_pubkey_path },
+	{ "secret-key", set_seckey_path },
+	{ "private-key", set_seckey_path }
 };
 
 #define NUM_SETTERS (sizeof SETTERS / sizeof SETTERS[0])
@@ -214,9 +196,12 @@ int
 read_config(struct windbag_config *config, FILE *f)
 {
 	char *buf;
-	size_t bufsize = 512;
+	size_t bufsize = 1200;
 	ssize_t line_len;
 	int rc = 0;
+
+	memset(config, 0, sizeof *config);
+	config->tty_speed = B9600;
 
 	buf = malloc(bufsize);
 	if (!buf)
@@ -232,14 +217,13 @@ read_config(struct windbag_config *config, FILE *f)
 		unsigned int i;
 
 		line = buf;
-		
 		while (isspace(*line))
 			++line;
-		
+
 		eol = strchr(line, '#');
 		if (!eol)
 			eol = line + line_len;
-		
+
 		while (eol > line && isspace(eol[-1]))
 			--eol;
 
@@ -278,12 +262,31 @@ read_config(struct windbag_config *config, FILE *f)
 			break;
 	}
 
+	free(buf);
+
 	if (ferror(f))
 	{
 		fprintf(stderr, "Error reading config file: %s\n", strerror(errno));
-		rc = errno;
+		return errno;
 	}
 
-	free(buf);
+	if (!rc)
+	{
+		const char *missing = NULL;
+		int have_pubkey = config->pubkey_path[0] != '\0';
+		int have_seckey = config->seckey_path[0] != '\0';
+
+		if (have_pubkey && have_seckey)
+			config->sign_messages = 1;
+		else if (have_pubkey && !have_seckey)
+			missing = "secret";
+		else if (have_seckey && !have_pubkey)
+			missing = "public";
+
+		if (missing)
+			fprintf(stderr, "Warning: %s key not specified; message signing is disabled\n",
+				missing);
+	}
+
 	return rc;
 }

@@ -290,3 +290,173 @@ read_config(struct windbag_config *config, FILE *f)
 
 	return rc;
 }
+
+int
+write_config_options(struct windbag_config *config,
+		const struct windbag_option *options, size_t n)
+{
+	char *empty = "\n";
+	FILE *f;
+	char *orig = NULL, *line, *end;
+	unsigned int i;
+	long f_len;
+	int *found = NULL, rc = 0;
+
+	f = fopen(config->config_path, "r");
+	if (!f)
+	{
+		if (errno != ENOENT)
+		{
+			rc = errno;
+			goto end;
+		}
+
+		orig = empty;
+	}
+	else
+	{
+		fseek(f, 0L, SEEK_END);
+		f_len = ftell(f);
+
+		orig = malloc(f_len + 2);
+		if (!orig)
+		{
+			rc = ENOMEM;
+			goto end;
+		}
+
+		rewind(f);
+		fread(orig, f_len, 1, f);
+		if (ferror(f))
+		{
+			rc = EIO;
+			goto end;
+		}
+
+		fclose(f);
+		f = NULL;
+
+		if (orig[f_len - 1] != '\n')
+		{
+			orig[f_len] = '\n';
+			orig[f_len + 1] = '\0';
+		}
+	}
+
+	found = calloc(n, sizeof (int));
+	if (!found)
+	{
+		rc = ENOMEM;
+		goto end;
+	}
+
+	f = fopen(config->config_path, "w");
+	if (!f)
+	{
+		rc = errno;
+		goto end;
+	}
+
+	line = orig;
+	while ((end = strchr(line, '\n')) != NULL)
+	{
+		char *word, *p, temp;
+
+		*end = '\0';
+
+		p = line;
+		while (isspace(*p))
+			++p;
+
+		if (p == end)
+		{
+			if (fprintf(f, "%s\n", line) < 0)
+			{
+				rc = EIO;
+				goto end;
+			}
+
+			line = end + 1;
+			continue;
+		}
+
+		word = p++;
+		*end = '\n';
+
+		while (!isspace(*p))
+			++p;
+
+		if (p == end)
+		{
+			*end = '\0';
+			if (fprintf(f, "%s\n", line) < 0)
+			{
+				rc = EIO;
+				goto end;
+			}
+
+			line = end + 1;
+			continue;
+		}
+
+		temp = *p;
+		*p = '\0';
+
+		for (i = 0; i < n; ++i)
+		{
+			const struct windbag_option *option = options + i;
+			if (strcmp(word, option->name) == 0)
+			{
+				if (found[i])
+					break;
+
+				found[i] = 1;
+				if (fprintf(f, "%s\t%s\n", option->name,
+						option->value) < 0)
+				{
+					rc = EIO;
+					goto end;
+				}
+
+				break;
+			}
+		}
+
+		if (i == n)
+		{
+			*p = temp;
+			*end = '\0';
+			if (fprintf(f, "%s\n", line) < 0)
+			{
+				rc = EIO;
+				goto end;
+			}
+		}
+
+		line = end + 1;
+	}
+
+	for (i = 0; i < n; ++i)
+	{
+		const struct windbag_option *option = options + i;
+		if (!found[i])
+		{
+			if (fprintf(f, "%s\t%s\n", option->name,
+					option->value) < 0)
+			{
+				rc = EIO;
+				goto end;
+			}
+		}
+	}
+
+end:
+	if (found)
+		free(found);
+	if (orig && orig != empty)
+		free(orig);
+	if (f)
+		fclose(f);
+
+	return rc;
+}

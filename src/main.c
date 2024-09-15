@@ -31,6 +31,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <sodium.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -38,6 +39,7 @@
 #include "callsign.h"
 #include "chat.h"
 #include "config.h"
+#include "keygen.h"
 #include "os.h"
 #include "tty.h"
 #include "windbag.h"
@@ -49,7 +51,8 @@ typedef struct
 } COMMAND;
 
 static const COMMAND COMMANDS[] = {
-	{ "chat", chat }
+	{ "chat", chat },
+	{ "keygen", keygen }
 };
 
 static int
@@ -142,6 +145,8 @@ main(int argc, char *argv[])
 	if (rc)
 		return rc;
 
+	strncpy(config.config_path, config_path, sizeof config.config_path - 1);
+
 	if (my_call)
 	{
 		rc = validate_callsign(my_call);
@@ -164,6 +169,12 @@ main(int argc, char *argv[])
 
 	if (optind < argc)
 		command = argv[optind];
+
+	if (sodium_init() < 0)
+	{
+		fprintf(stderr, "Failed to initialize libsodium. Exiting.\n");
+		return 1;
+	}
 
 	found = 0;
 	for (i = 0; i < (sizeof COMMANDS / sizeof (COMMAND)); ++i)

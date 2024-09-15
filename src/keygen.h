@@ -29,50 +29,12 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_CONFIG_H
-#define WB_CONFIG_H
+#ifndef WB_KEYGEN_H
+#define WB_KEYGEN_H
 
-#include <sodium.h>
-#include <stdio.h>
-
-#include "ax25.h"
-
-#define MAX_FILE_PATH 1025
-
-extern const char * const CONFIG_FILE_NAME;
-extern const char * const DEFAULT_PUBKEY;
-extern const char * const DEFAULT_SECKEY;
-
-struct windbag_config
-{
-	char config_path[MAX_FILE_PATH];
-
-	char my_call[AX25_ADDR_MAX];
-	char digi_path[AX25_MAX_ADDRS - 2][AX25_ADDR_MAX];
-	char tty[MAX_FILE_PATH];
-	unsigned int tty_speed;
-
-	int sign_messages;
-	char pubkey_path[MAX_FILE_PATH];
-	char seckey_path[MAX_FILE_PATH];
-	unsigned char pubkey[crypto_sign_PUBLICKEYBYTES];
-	unsigned char seckey[crypto_sign_SECRETKEYBYTES];
-};
-
-struct windbag_option
-{
-	char *name;
-	char *value;
-};
-
-char *
-default_config_dir_path(char *buf, int bufsize);
+#include "config.h"
 
 int
-read_config(struct windbag_config *config, FILE *f);
-
-int
-write_config_options(struct windbag_config *config,
-		const struct windbag_option *options, size_t n_options);
+keygen(struct windbag_config *config);
 
 #endif

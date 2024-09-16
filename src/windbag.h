@@ -35,6 +35,7 @@
 #include <stdint.h>
 
 #include "ax25.h"
+#include "config.h"
 #include "bigbuffer.h"
 
 enum windbag_signature_status
@@ -63,7 +64,8 @@ struct windbag_packet *
 windbag_read_packet(struct windbag_packet *dest, const struct ax25_io *io);
 
 ssize_t
-windbag_send_message(const struct ax25_io *io, const struct ax25_header *header,
+windbag_send_message(const struct windbag_config *config,
+		const struct ax25_io *io, const struct ax25_header *header,
 		const struct bigbuffer *message);
 
 #endif

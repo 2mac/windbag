@@ -37,4 +37,7 @@
 int
 keygen(struct windbag_config *config);
 
+int
+load_keypair(struct windbag_config *config);
+
 #endif

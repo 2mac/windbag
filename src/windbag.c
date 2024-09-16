@@ -29,6 +29,7 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
+#include <sodium.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -40,8 +41,12 @@
 const uint8_t MAGIC_NUMBER[2] = { 0xA4, 0x55 };
 #define MIN_PAYLOAD_LENGTH 8
 
+#define MAX_SIGNATURE_LENGTH crypto_sign_BYTES
+
 #define HEADER_INDEX 2
 #define FLAGS_INDEX 3
+#define SIGLENGTH_INDEX 4
+#define SIG_INDEX (SIGLENGTH_INDEX + 1)
 #define TIMESTAMP_INDEX (-4)
 #define MULTIPART_INDEX (TIMESTAMP_INDEX - 2)
 
@@ -113,16 +118,19 @@ fail1:
 }
 
 ssize_t
-windbag_send_message(const struct ax25_io *io, const struct ax25_header *header,
+windbag_send_message(const struct windbag_config *config,
+		const struct ax25_io *io, const struct ax25_header *header,
 		const struct bigbuffer *message)
 {
 	struct ax25_packet packet;
-	unsigned int header_length, content_length, flags = 0, max_content;
+	unsigned char signature[MAX_SIGNATURE_LENGTH];
+	unsigned long long sig_length = 0;
+	unsigned int base_header_length, content_length, flags = 0, max_content;
 	uint32_t timestamp;
 	ssize_t written = 0;
 
 	max_content = sizeof packet.payload - MIN_PAYLOAD_LENGTH;
-	header_length = MIN_PAYLOAD_LENGTH;
+	base_header_length = MIN_PAYLOAD_LENGTH;
 	content_length = message->length;
 
 	memcpy(&packet.header, header, sizeof packet.header);
@@ -130,13 +138,20 @@ windbag_send_message(const struct ax25_io *io, const struct ax25_header *header,
 
 	timestamp = htole32((uint32_t) time(NULL));
 
+	if (config->sign_messages)
+	{
+		flags |= FLAG_SIGNED;
+		max_content -= MAX_SIGNATURE_LENGTH + 1;
+		base_header_length += 1;
+	}
+
 	if (content_length > max_content)
 	{
 		struct bigbuffer **buffers;
 		unsigned int part_index, final_index;
 		/* adding indices to header */
 		max_content -= 2;
-		header_length += 2;
+		base_header_length += 2;
 		flags |= FLAG_MULTIPART;
 
 		buffers = bigbuffer_split(message, max_content, &final_index);
@@ -151,7 +166,27 @@ windbag_send_message(const struct ax25_io *io, const struct ax25_header *header,
 		{
 			struct bigbuffer *buf = buffers[part_index];
 			ssize_t rc;
-			
+			uint8_t header_length = base_header_length;
+
+			if (config->sign_messages)
+			{
+				rc = crypto_sign_detached(signature,
+							&sig_length,
+							buf->data, buf->length,
+							config->seckey);
+				if (rc < 0)
+				{
+					written = rc;
+					break;
+				}
+
+				packet.payload[SIGLENGTH_INDEX] = sig_length;
+				memcpy(packet.payload + SIG_INDEX, signature,
+					sig_length);
+
+				header_length += sig_length;
+			}
+
 			packet.payload[HEADER_INDEX] = header_length;
 			packet.payload[FLAGS_INDEX] = flags;
 			packet.payload[header_length + MULTIPART_INDEX] = part_index;
@@ -177,8 +212,28 @@ windbag_send_message(const struct ax25_io *io, const struct ax25_header *header,
 	}
 	else /* can fit in one packet */
 	{
+		uint8_t header_length = base_header_length;
+
+		if (config->sign_messages)
+		{
+			int rc = crypto_sign_detached(signature, &sig_length,
+						message->data, content_length,
+						config->seckey);
+			if (rc < 0)
+			{
+				written = rc;
+				goto end;
+			}
+
+			packet.payload[SIGLENGTH_INDEX] = sig_length;
+			memcpy(packet.payload + SIG_INDEX, signature,
+				sig_length);
+
+			header_length += sig_length;
+		}
+
 		*((uint32_t *) &packet.payload[header_length + TIMESTAMP_INDEX]) = timestamp;
-		
+
 		packet.payload[HEADER_INDEX] = header_length;
 		packet.payload[FLAGS_INDEX] = flags;
 

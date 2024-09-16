@@ -32,6 +32,6 @@ The following optional fields are defined and always appear in the given order, 
 
 - Signature
     - This field consists of one octet representing the length of the signature which follows, and
-    - The Ed25519 signature of the SHA-256 hash of the payload (the multipart field, timestamp, and message content, in that order).
+    - The Ed25519 signature of the payload (the multipart field, timestamp, and message content, in that order).
 - Multipart
     - This field consists of two octets: the index of this packet and the index of the final packet in the series, respectively.

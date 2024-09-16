@@ -216,3 +216,72 @@ keygen(struct windbag_config *config)
 
 	return 0;
 }
+
+static int
+read_key_file(const char *path, const char *key_type, unsigned char *dest,
+	size_t expected_size)
+{
+	FILE *f;
+	char *buf = NULL, *eol;
+	uint8_t *decoded;
+	size_t bufsize, decoded_size;
+	ssize_t line_len;
+
+	f = fopen(path, "r");
+	if (!f)
+	{
+		fprintf(stderr, "Error loading %s key file %s: %s\n", key_type,
+			path, strerror(errno));
+		return 1;
+	}
+
+	line_len = getline(&buf, &bufsize, f);
+	fclose(f);
+	if (line_len < 0)
+	{
+		free(buf);
+		fprintf(stderr, "Error reading %s key file %s: %s\n", key_type,
+			path, strerror(EIO));
+		return 1;
+	}
+
+	if ((eol = strrchr(buf, '\n')) != NULL)
+		*eol = '\0';
+
+	decoded = base64_decode(&decoded_size, buf);
+	free(buf);
+	if (!decoded)
+	{
+		fprintf(stderr, "Error decoding %s key.\n", key_type);
+		return 1;
+	}
+
+	if (decoded_size != expected_size)
+	{
+		fprintf(stderr, "Error in %s key file: unexpected data length\n",
+			key_type);
+		free(decoded);
+		return 1;
+	}
+
+	memcpy(dest, decoded, decoded_size);
+	free(decoded);
+
+	return 0;
+}
+
+int
+load_keypair(struct windbag_config *config)
+{
+	int rc;
+
+	rc = read_key_file(config->pubkey_path, "public", config->pubkey,
+				sizeof config->pubkey);
+	if (rc)
+		return rc;
+
+	rc = read_key_file(config->seckey_path, "secret", config->seckey,
+			sizeof config->seckey);
+
+	return rc;
+}

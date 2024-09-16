@@ -36,6 +36,7 @@
 
 #include "bigbuffer.h"
 #include "chat.h"
+#include "keygen.h"
 #include "kiss.h"
 #include "windbag.h"
 
@@ -115,7 +116,8 @@ chat_write(struct chat_config *cc)
 			bigbuffer_append(message, (uint8_t *) next, line_length);
 			if (message->length > 0)
 			{
-				written = windbag_send_message(aio, &header, message);
+				written = windbag_send_message(config, aio,
+							&header, message);
 				if (written < 0)
 				{
 					fprintf(stderr, "Error writing to TNC\n");
@@ -159,6 +161,13 @@ chat(struct windbag_config *config)
 	{
 		fprintf(stderr, "Set the TNC device with -t\n");
 		return 1;
+	}
+
+	if (config->sign_messages)
+	{
+		rc = load_keypair(config);
+		if (rc)
+			return rc;
 	}
 
 	kiss_init_serial(&tnc, &io, config->tty, config->tty_speed);

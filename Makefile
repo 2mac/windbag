@@ -1,5 +1,5 @@
 CC ?= cc
-STND ?= -ansi -pedantic
+STND ?= -std=c99
 CFLAGS += $(STND) -O2 -Wall -Wextra -Wunreachable-code -ftrapv \
         -D_POSIX_C_SOURCE=2 -D_DEFAULT_SOURCE
 LDFLAGS = -lpthread -lsodium

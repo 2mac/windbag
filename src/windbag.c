@@ -117,33 +117,118 @@ fail1:
 	return NULL;
 }
 
+struct msg_param
+{
+	unsigned int content_length;
+	int sign;
+	int multi;
+	unsigned int multi_index;
+	unsigned int multi_final;
+	uint32_t timestamp;
+	const uint8_t *content;
+	const unsigned char *seckey;
+};
+
+static int
+sign_message(const struct msg_param *params, unsigned char *sig,
+	unsigned long long *sig_length)
+{
+	unsigned char *buf, *p;
+	unsigned int bufsize;
+	int rc;
+
+	bufsize = params->content_length + sizeof params->timestamp;
+	if (params->multi)
+		bufsize += 2;
+
+	buf = malloc(bufsize);
+	if (!buf)
+		return -1;
+
+	p = buf;
+
+	if (params->multi)
+	{
+		*(p++) = params->multi_index;
+		*(p++) = params->multi_final;
+	}
+
+	*((uint32_t *) p++) = params->timestamp;
+	memcpy(p, params->content, params->content_length);
+
+	rc = crypto_sign_detached(sig, sig_length, buf, bufsize,
+				params->seckey);
+	free(buf);
+	return rc;
+}
+
+static ssize_t
+write_message(const struct ax25_io *io, struct ax25_packet *packet,
+	const struct msg_param *params)
+{
+	unsigned char sig[MAX_SIGNATURE_LENGTH];
+	unsigned long long sig_length = 0;
+	unsigned int header_length, flags = 0;
+	uint8_t *payload = packet->payload;
+
+	header_length = 4;
+
+	if (params->sign)
+	{
+		int rc;
+
+		flags |= FLAG_SIGNED;
+
+		rc = sign_message(params, sig, &sig_length);
+		if (rc < 0)
+			return rc;
+
+		payload[SIGLENGTH_INDEX] = sig_length;
+		memcpy(payload + SIG_INDEX, sig, sig_length);
+		header_length += sig_length + 1;
+	}
+
+	if (params->multi)
+	{
+		flags |= FLAG_MULTIPART;
+		payload[header_length++] = params->multi_index;
+		payload[header_length++] = params->multi_final;
+	}
+
+	*((uint32_t *) &payload[header_length]) = params->timestamp;
+	header_length += sizeof params->timestamp;
+
+	payload[HEADER_INDEX] = header_length;
+	payload[FLAGS_INDEX] = flags;
+
+	memcpy(payload + header_length, params->content, params->content_length);
+	packet->payload_length = header_length + params->content_length;
+
+	return ax25_write_packet(io, packet);
+}
+
 ssize_t
 windbag_send_message(const struct windbag_config *config,
 		const struct ax25_io *io, const struct ax25_header *header,
 		const struct bigbuffer *message)
 {
 	struct ax25_packet packet;
-	unsigned char signature[MAX_SIGNATURE_LENGTH];
-	unsigned long long sig_length = 0;
-	unsigned int base_header_length, content_length, flags = 0, max_content;
-	uint32_t timestamp;
+	struct msg_param params;
+	unsigned int content_length, max_content;
 	ssize_t written = 0;
 
 	max_content = sizeof packet.payload - MIN_PAYLOAD_LENGTH;
-	base_header_length = MIN_PAYLOAD_LENGTH;
 	content_length = message->length;
+
+	if (config->sign_messages)
+		max_content -= MAX_SIGNATURE_LENGTH + 1;
 
 	memcpy(&packet.header, header, sizeof packet.header);
 	memcpy(&packet.payload, MAGIC_NUMBER, sizeof MAGIC_NUMBER);
 
-	timestamp = htole32((uint32_t) time(NULL));
-
-	if (config->sign_messages)
-	{
-		flags |= FLAG_SIGNED;
-		max_content -= MAX_SIGNATURE_LENGTH + 1;
-		base_header_length += 1;
-	}
+	params.timestamp = htole32((uint32_t) time(NULL));
+	params.sign = config->sign_messages;
+	params.seckey = config->seckey;
 
 	if (content_length > max_content)
 	{
@@ -151,8 +236,7 @@ windbag_send_message(const struct windbag_config *config,
 		unsigned int part_index, final_index;
 		/* adding indices to header */
 		max_content -= 2;
-		base_header_length += 2;
-		flags |= FLAG_MULTIPART;
+		params.multi = 1;
 
 		buffers = bigbuffer_split(message, max_content, &final_index);
 		if (!buffers)
@@ -162,40 +246,17 @@ windbag_send_message(const struct windbag_config *config,
 		}
 
 		--final_index;
+		params.multi_final = final_index;
 		for (part_index = 0; part_index <= final_index; ++part_index)
 		{
 			struct bigbuffer *buf = buffers[part_index];
 			ssize_t rc;
-			uint8_t header_length = base_header_length;
 
-			if (config->sign_messages)
-			{
-				rc = crypto_sign_detached(signature,
-							&sig_length,
-							buf->data, buf->length,
-							config->seckey);
-				if (rc < 0)
-				{
-					written = rc;
-					break;
-				}
+			params.content_length = buf->length;
+			params.multi_index = part_index;
+			params.content = buf->data;
 
-				packet.payload[SIGLENGTH_INDEX] = sig_length;
-				memcpy(packet.payload + SIG_INDEX, signature,
-					sig_length);
-
-				header_length += sig_length;
-			}
-
-			packet.payload[HEADER_INDEX] = header_length;
-			packet.payload[FLAGS_INDEX] = flags;
-			packet.payload[header_length + MULTIPART_INDEX] = part_index;
-			packet.payload[header_length + MULTIPART_INDEX + 1] = final_index;
-			*((uint32_t *) &packet.payload[header_length + TIMESTAMP_INDEX]) = timestamp;
-
-			memcpy(packet.payload + header_length, buf->data, buf->length);
-			packet.payload_length = header_length + buf->length;
-			rc = ax25_write_packet(io, &packet);
+			rc = write_message(io, &packet, &params);
 			if (rc < 0)
 			{
 				written = rc;
@@ -212,35 +273,11 @@ windbag_send_message(const struct windbag_config *config,
 	}
 	else /* can fit in one packet */
 	{
-		uint8_t header_length = base_header_length;
+		params.content_length = content_length;
+		params.multi = 0;
+		params.content = message->data;
 
-		if (config->sign_messages)
-		{
-			int rc = crypto_sign_detached(signature, &sig_length,
-						message->data, content_length,
-						config->seckey);
-			if (rc < 0)
-			{
-				written = rc;
-				goto end;
-			}
-
-			packet.payload[SIGLENGTH_INDEX] = sig_length;
-			memcpy(packet.payload + SIG_INDEX, signature,
-				sig_length);
-
-			header_length += sig_length;
-		}
-
-		*((uint32_t *) &packet.payload[header_length + TIMESTAMP_INDEX]) = timestamp;
-
-		packet.payload[HEADER_INDEX] = header_length;
-		packet.payload[FLAGS_INDEX] = flags;
-
-		memcpy(packet.payload + header_length, message->data, content_length);
-		packet.payload_length = header_length + content_length;
-
-		written = ax25_write_packet(io, &packet);
+		written = write_message(io, &packet, &params);
 	}
 
 end:

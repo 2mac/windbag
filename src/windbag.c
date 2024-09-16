@@ -133,7 +133,7 @@ static int
 sign_message(const struct msg_param *params, unsigned char *sig,
 	unsigned long long *sig_length)
 {
-	unsigned char *buf;
+	unsigned char *buf, *p;
 	unsigned int bufsize;
 	int rc;
 
@@ -145,14 +145,17 @@ sign_message(const struct msg_param *params, unsigned char *sig,
 	if (!buf)
 		return -1;
 
+	p = buf;
+
 	if (params->multi)
 	{
-		buf[0] = params->multi_index;
-		buf[1] = params->multi_final;
+		*(p++) = params->multi_index;
+		*(p++) = params->multi_final;
 	}
 
-	*((uint32_t *) &buf[2]) = params->timestamp;
-	memcpy(buf + 6, params->content, params->content_length);
+	*((uint32_t *) p) = params->timestamp;
+	p += sizeof params->timestamp;
+	memcpy(p, params->content, params->content_length);
 
 	rc = crypto_sign_detached(sig, sig_length, buf, bufsize,
 				params->seckey);

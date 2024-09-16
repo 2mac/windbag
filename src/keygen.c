@@ -133,12 +133,11 @@ prompt_and_set_path(char *dest, const char *key_type, const char *default_path,
 static int
 encode_and_save(const unsigned char *key, size_t key_size, const char *path)
 {
-	char *encoded = NULL;
-	size_t bufsize;
+	char *encoded;
 	FILE *f;
 	int rc;
 
-	encoded = base64_encode(encoded, &bufsize, key, key_size);
+	encoded = base64_encode(key, key_size);
 	if (!encoded)
 		return 1;
 

@@ -36,7 +36,7 @@
 #include <stdlib.h>
 
 char *
-base64_encode(char *dest, size_t *bufsize, const uint8_t *src, size_t src_size);
+base64_encode(const uint8_t *src, size_t src_size);
 
 uint8_t *
 base64_decode(size_t *dest_size, const char *src);

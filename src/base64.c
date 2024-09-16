@@ -42,26 +42,15 @@ static const char * const TABLE =
 #define PAD '='
 
 char *
-base64_encode(char *dest, size_t *bufsize, const uint8_t *src, size_t src_size)
+base64_encode(const uint8_t *src, size_t src_size)
 {
 	size_t i, max_dest;
-	char *p;
+	char *dest, *p;
 
 	max_dest = (src_size / 3 * 4) + ((src_size % 3) ? 4 : 0) + 1;
-	if (!dest || max_dest > *bufsize)
-	{
-		char *temp = realloc(dest, max_dest);
-		if (!temp)
-		{
-			if (dest)
-				free(dest);
-
-			return NULL;
-		}
-
-		dest = temp;
-		*bufsize = max_dest;
-	}
+	dest = malloc(max_dest);
+	if (!dest)
+		return NULL;
 
 	p = dest;
 	for (i = 0; i < src_size; i += 3)

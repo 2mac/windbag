@@ -65,7 +65,38 @@ chat_read(void *input)
 		if (!windbag_read_packet(&packet, config, aio))
 			continue;
 
-		printf("\n%s: %s\n", packet.header.src_addr, (char *) packet.payload->data);
+		printf("\n%s", packet.header.src_addr);
+
+		if (packet.signature_status != NO_SIGNATURE)
+		{
+			const char *status;
+			switch (packet.signature_status)
+			{
+			case GOOD_SIGNATURE:
+				status = "verified";
+				break;
+
+			case UNKNOWN_SIGNATURE:
+				status = "unverified";
+				break;
+
+			case BAD_SIGNATURE:
+				status = "BAD SIGNATURE!";
+				break;
+
+			default:
+				status = "unknown signature status";
+				break;
+			}
+
+			printf(" (%s)", status);
+		}
+
+		if (packet.multipart_final)
+			printf(" (%u/%u)", packet.multipart_index + 1,
+				packet.multipart_final + 1);
+
+		printf(": %s\n", packet.payload->data);
 	}
 
 	windbag_packet_cleanup(&packet);

@@ -62,8 +62,9 @@ base64_encode(const uint8_t *src, size_t src_size)
 		bits = in_count * 8;
 		out_count = (bits / 6) + ((bits % 6) ? 1 : 0);
 
+		shift = bits - 8;
 		for (j = 0; j < in_count; ++j)
-			quantum |= src[i + j] << (8 * j);
+			quantum |= src[i + j] << (shift - (8 * j));
 
 		shift = bits - 6;
 		mask6 <<= shift;
@@ -124,10 +125,10 @@ base64_decode(size_t *dest_size, const char *src)
 			decoded[j] = index;
 		}
 
-		for (j = 0; j < in_count - 1; ++j)
+		for (j = 1; j < in_count; ++j)
 		{
 			unsigned int j2 = j * 2;
-			*(p++) = (decoded[j] << j2) | (decoded[j+1] >> (4 - j2));
+			*(p++) = (decoded[j-1] << j2) | (decoded[j] >> (6 - j2));
 		}
 	}
 

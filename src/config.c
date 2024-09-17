@@ -31,6 +31,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <libgen.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
@@ -39,6 +40,7 @@
 #include "config.h"
 #include "os.h"
 #include "tty.h"
+#include "util.h"
 
 const char * const CONFIG_FILE_NAME = "windbag.conf";
 const char * const DEFAULT_PUBKEY = "ed25519.pub";
@@ -314,11 +316,25 @@ write_config_options(struct windbag_config *config,
 	f = fopen(config->config_path, "r");
 	if (!f)
 	{
+		char *dpath;
+
 		if (errno != ENOENT)
 		{
 			rc = errno;
 			goto end;
 		}
+
+		dpath = strdup(config->config_path);
+		if (!dpath)
+		{
+			rc = ENOMEM;
+			goto end;
+		}
+
+		rc = mkdir_recursive(dirname(dpath), 0755);
+		free(dpath);
+		if (rc)
+			goto end;
 
 		orig = empty;
 	}

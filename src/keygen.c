@@ -31,6 +31,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <libgen.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <string.h>
@@ -134,13 +135,29 @@ prompt_and_set_path(char *dest, const char *key_type, const char *default_path,
 static int
 encode_and_save(const unsigned char *key, size_t key_size, const char *path)
 {
-	char *encoded;
+	char *encoded, *dpath;
 	FILE *f;
 	int rc;
 
+	dpath = strdup(path);
+	if (!dpath)
+	{
+		fprintf(stderr, "Error saving key: %s\n", strerror(ENOMEM));
+		return ENOMEM;
+	}
+
+	rc = mkdir_recursive(dirname(dpath), 0755);
+	free(dpath);
+	if (rc)
+	{
+		fprintf(stderr, "Error writing %s: %s\n", path,
+			strerror(errno));
+		return errno;
+	}
+
 	encoded = base64_encode(key, key_size);
 	if (!encoded)
-		return 1;
+		return -1;
 
 	f = fopen(path, "w");
 	if (!f)
@@ -148,7 +165,7 @@ encode_and_save(const unsigned char *key, size_t key_size, const char *path)
 		fprintf(stderr, "Error writing %s: %s\n", path,
 			strerror(errno));
 		free(encoded);
-		return 1;
+		return errno;
 	}
 
 	rc = fprintf(f, "%s\n", encoded);

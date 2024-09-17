@@ -30,6 +30,7 @@
  */
 
 #include <errno.h>
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +39,7 @@
 #include "base64.h"
 #include "keyring.h"
 #include "os.h"
+#include "util.h"
 
 #define STEP 32
 #define RECORD_LENGTH (AX25_CALL_MAX + 1 + crypto_sign_PUBLICKEYBYTES)
@@ -192,7 +194,17 @@ keyring_save(struct keyring *keyring, const char *path)
 {
 	FILE *f;
 	unsigned int i;
-	int rc = 0;
+	char *dpath;
+	int rc;
+
+	dpath = strdup(path);
+	if (!dpath)
+		return ENOMEM;
+
+	rc = mkdir_recursive(dirname(dpath), 0755);
+	free(dpath);
+	if (rc)
+		return rc;
 
 	f = fopen(path, "wb");
 	if (!f)

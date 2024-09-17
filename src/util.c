@@ -29,14 +29,47 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_UTIL_H
-#define WB_UTIL_H
+#include <errno.h>
+#include <libgen.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <sys/stat.h>
-
-#define UNUSED(...) (void)(__VA_ARGS__)
+#include "util.h"
 
 int
-mkdir_recursive(const char *path, mode_t mode);
+mkdir_recursive(const char *path, mode_t mode)
+{
+	int rc;
 
-#endif
+	rc = mkdir(path, mode);
+	if (rc == -1)
+	{
+		char *dpath;
+
+		switch (errno)
+		{
+		case ENOENT:
+			dpath = strdup(path);
+			if (!dpath)
+			{
+				rc = ENOMEM;
+				break;
+			}
+
+			rc = mkdir_recursive(dirname(dpath), mode);
+			free(dpath);
+			if (rc == 0 && (rc = mkdir(path, mode) == -1))
+				rc = errno;
+			break;
+
+		case EEXIST:
+			rc = 0;
+			break;
+
+		default:
+			rc = errno;
+		}
+	}
+
+	return rc;
+}

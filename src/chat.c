@@ -70,10 +70,18 @@ chat_read(void *input)
 		if (packet.signature_status != NO_SIGNATURE)
 		{
 			const char *status;
+			char temp[9 + AX25_ADDR_MAX];
+
 			switch (packet.signature_status)
 			{
 			case GOOD_SIGNATURE:
 				status = "verified";
+				break;
+
+			case ALTERNATE_SIGNATURE:
+				sprintf(temp, "verified %s",
+					packet.verified_callsign);
+				status = temp;
 				break;
 
 			case UNKNOWN_SIGNATURE:

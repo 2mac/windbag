@@ -43,7 +43,8 @@ enum windbag_signature_status
 	NO_SIGNATURE,
 	GOOD_SIGNATURE,
 	UNKNOWN_SIGNATURE,
-	BAD_SIGNATURE
+	BAD_SIGNATURE,
+	ALTERNATE_SIGNATURE
 };
 
 struct windbag_packet
@@ -54,6 +55,7 @@ struct windbag_packet
 	uint32_t timestamp;
 	struct bigbuffer *payload;
 	enum windbag_signature_status signature_status;
+	char verified_callsign[AX25_ADDR_MAX];
 };
 
 int

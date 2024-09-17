@@ -132,9 +132,31 @@ windbag_read_packet(struct windbag_packet *dest,
 
 			mlen = content_length + (content - msg);
 			if (crypto_sign_verify_detached(sig, msg, mlen, identity->pubkey))
+			{
+				unsigned int i;
+
 				dest->signature_status = BAD_SIGNATURE;
+
+				for(i = 0, identity = keyring->keys;
+				    i < keyring->length;
+				    ++i, ++identity)
+				{
+					int rc = crypto_sign_verify_detached(
+						sig, msg, mlen,
+						identity->pubkey);
+					if (rc == 0)
+					{
+						dest->signature_status = ALTERNATE_SIGNATURE;
+						strcpy(dest->verified_callsign,
+							identity->callsign);
+						break;
+					}
+				}
+			}
 			else
+			{
 				dest->signature_status = GOOD_SIGNATURE;
+			}
 		}
 	}
 	else

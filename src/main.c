@@ -40,6 +40,7 @@
 #include "chat.h"
 #include "config.h"
 #include "keygen.h"
+#include "keyring.h"
 #include "os.h"
 #include "tty.h"
 #include "windbag.h"
@@ -47,11 +48,14 @@
 typedef struct
 {
 	const char *name;
-	int (*run)(struct windbag_config *);
+	int (*run)(struct windbag_config *, int, char **);
 } COMMAND;
 
 static const COMMAND COMMANDS[] = {
 	{ "chat", chat },
+	{ "delete-key", delete_key },
+	{ "export-key", export_key },
+	{ "import-key", import_key },
 	{ "keygen", keygen }
 };
 
@@ -168,7 +172,7 @@ main(int argc, char *argv[])
 		config.tty_speed = speed;
 
 	if (optind < argc)
-		command = argv[optind];
+		command = argv[optind++];
 
 	if (sodium_init() < 0)
 	{
@@ -182,7 +186,8 @@ main(int argc, char *argv[])
 		if (strcmp(command, COMMANDS[i].name) == 0)
 		{
 			found = 1;
-			rc = COMMANDS[i].run(&config);
+			rc = COMMANDS[i].run(&config, argc - optind,
+					argv + optind);
 			break;
 		}
 	}

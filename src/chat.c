@@ -38,6 +38,7 @@
 #include "chat.h"
 #include "keygen.h"
 #include "kiss.h"
+#include "util.h"
 #include "windbag.h"
 
 struct chat_config
@@ -51,6 +52,7 @@ chat_read(void *input)
 {
 	struct chat_config *cc = (struct chat_config *) input;
 	struct ax25_io *aio = cc->aio;
+	struct windbag_config *config = cc->config;
 	struct windbag_packet packet;
 	int rc;
 
@@ -60,7 +62,7 @@ chat_read(void *input)
 
 	for (;;)
 	{
-		if (!windbag_read_packet(&packet, aio))
+		if (!windbag_read_packet(&packet, config, aio))
 			continue;
 
 		printf("\n%s: %s\n", packet.header.src_addr, (char *) packet.payload->data);
@@ -142,7 +144,7 @@ chat_write(struct chat_config *cc)
 }
 
 int
-chat(struct windbag_config *config)
+chat(struct windbag_config *config, int argc, char **argv)
 {
 	struct io io;
 	struct ax25_io aio;
@@ -150,6 +152,9 @@ chat(struct windbag_config *config)
 	struct chat_config cc;
 	pthread_t read_thread;
 	int rc;
+
+	UNUSED(argc);
+	UNUSED(argv);
 
 	if (config->my_call[0] == '\0')
 	{

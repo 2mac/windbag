@@ -29,46 +29,9 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_WINDBAG_H
-#define WB_WINDBAG_H
+#ifndef WB_UTIL_H
+#define WB_UTIL_H
 
-#include <stdint.h>
-
-#include "ax25.h"
-#include "config.h"
-#include "bigbuffer.h"
-
-enum windbag_signature_status
-{
-	NO_SIGNATURE,
-	GOOD_SIGNATURE,
-	UNKNOWN_SIGNATURE,
-	BAD_SIGNATURE
-};
-
-struct windbag_packet
-{
-	struct ax25_header header;
-	unsigned int multipart_index;
-	unsigned int multipart_final;
-	uint32_t timestamp;
-	struct bigbuffer *payload;
-	enum windbag_signature_status signature_status;
-};
-
-int
-windbag_packet_init(struct windbag_packet *packet);
-
-void
-windbag_packet_cleanup(struct windbag_packet *packet);
-
-struct windbag_packet *
-windbag_read_packet(struct windbag_packet *dest,
-		const struct windbag_config *config, const struct ax25_io *io);
-
-ssize_t
-windbag_send_message(const struct windbag_config *config,
-		const struct ax25_io *io, const struct ax25_header *header,
-		const struct bigbuffer *message);
+#define UNUSED(...) (void)(__VA_ARGS__)
 
 #endif

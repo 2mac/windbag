@@ -35,7 +35,7 @@
 #include "config.h"
 
 int
-keygen(struct windbag_config *config);
+keygen(struct windbag_config *config, int argc, char **argv);
 
 int
 load_keypair(struct windbag_config *config);

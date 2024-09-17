@@ -29,46 +29,56 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
-#ifndef WB_WINDBAG_H
-#define WB_WINDBAG_H
+#ifndef WB_KEYRING_H
+#define WB_KEYRING_H
 
-#include <stdint.h>
+#include <sodium.h>
 
 #include "ax25.h"
 #include "config.h"
-#include "bigbuffer.h"
 
-enum windbag_signature_status
+struct identity
 {
-	NO_SIGNATURE,
-	GOOD_SIGNATURE,
-	UNKNOWN_SIGNATURE,
-	BAD_SIGNATURE
+	char callsign[AX25_ADDR_MAX];
+	unsigned char pubkey[crypto_sign_PUBLICKEYBYTES];
 };
 
-struct windbag_packet
+struct keyring
 {
-	struct ax25_header header;
-	unsigned int multipart_index;
-	unsigned int multipart_final;
-	uint32_t timestamp;
-	struct bigbuffer *payload;
-	enum windbag_signature_status signature_status;
+	unsigned int bufsize;
+	unsigned int length;
+	struct identity *keys;
 };
 
-int
-windbag_packet_init(struct windbag_packet *packet);
+struct keyring *
+keyring_new(void);
 
 void
-windbag_packet_cleanup(struct windbag_packet *packet);
+keyring_free(struct keyring *keyring);
 
-struct windbag_packet *
-windbag_read_packet(struct windbag_packet *dest,
-		const struct windbag_config *config, const struct ax25_io *io);
+int
+keyring_add(struct keyring *keyring, const char *callsign,
+	const char *pubkey_base64);
 
-ssize_t
-windbag_send_message(const struct windbag_config *config,
-		const struct ax25_io *io, const struct ax25_header *header,
-		const struct bigbuffer *message);
+void
+keyring_delete(struct keyring *keyring, const char *callsign);
+
+int
+keyring_load(struct keyring *keyring, const char *path);
+
+int
+keyring_save(struct keyring *keyring, const char *path);
+
+struct identity *
+keyring_search(struct keyring *keyring, const char *callsign);
+
+int
+import_key(struct windbag_config *config, int argc, char **argv);
+
+int
+export_key(struct windbag_config *config, int argc, char **argv);
+
+int
+delete_key(struct windbag_config *config, int argc, char **argv);
 
 #endif

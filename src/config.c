@@ -43,6 +43,7 @@
 const char * const CONFIG_FILE_NAME = "windbag.conf";
 const char * const DEFAULT_PUBKEY = "ed25519.pub";
 const char * const DEFAULT_SECKEY = "ed25519.sec";
+const char * const DEFAULT_KEYRING = "keyring.dat";
 
 char *
 default_config_dir_path(char *buf, int bufsize)
@@ -174,6 +175,13 @@ set_seckey_path(struct windbag_config *config, const char *args)
 	return 0;
 }
 
+static int
+set_keyring_path(struct windbag_config *config, const char *args)
+{
+	strncpy(config->keyring_path, args, sizeof config->keyring_path - 1);
+	return 0;
+}
+
 typedef struct config_setter
 {
 	const char *name;
@@ -187,7 +195,8 @@ static const SETTER SETTERS[] = {
 	{ "tty-speed", set_tty_speed },
 	{ "public-key", set_pubkey_path },
 	{ "secret-key", set_seckey_path },
-	{ "private-key", set_seckey_path }
+	{ "private-key", set_seckey_path },
+	{ "keyring", set_keyring_path }
 };
 
 #define NUM_SETTERS (sizeof SETTERS / sizeof SETTERS[0])

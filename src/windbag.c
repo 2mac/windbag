@@ -36,6 +36,7 @@
 #include <time.h>
 
 #include "endian.h"
+#include "keyring.h"
 #include "windbag.h"
 
 const uint8_t MAGIC_NUMBER[2] = { 0xA4, 0x55 };
@@ -68,7 +69,8 @@ windbag_packet_cleanup(struct windbag_packet *packet)
 }
 
 struct windbag_packet *
-windbag_read_packet(struct windbag_packet *dest, const struct ax25_io *io)
+windbag_read_packet(struct windbag_packet *dest,
+		const struct windbag_config *config, const struct ax25_io *io)
 {
 	struct ax25_packet *src;
 	unsigned int header_length, flags, content_length;
@@ -97,11 +99,51 @@ windbag_read_packet(struct windbag_packet *dest, const struct ax25_io *io)
 	header_length = src->payload[HEADER_INDEX];
 	flags = src->payload[FLAGS_INDEX];
 	content = src->payload + header_length;
+	content_length = src->payload_length - header_length;
 	dest->timestamp = le32toh(*((uint32_t *) &content[TIMESTAMP_INDEX]));
+
+	if (flags & FLAG_MULTIPART)
+	{
+		dest->multipart_index = content[MULTIPART_INDEX];
+		dest->multipart_final = content[MULTIPART_INDEX + 1];
+	}
+	else
+	{
+		dest->multipart_final = 0;
+	}
+
+	if (flags & FLAG_SIGNED)
+	{
+		struct keyring *keyring = config->keyring;
+		struct identity *identity;
+
+		if (!keyring || !(identity = keyring_search(keyring, src->header.src_addr)))
+		{
+			dest->signature_status = UNKNOWN_SIGNATURE;
+		}
+		else
+		{
+			unsigned char *sig = src->payload + SIG_INDEX;
+			unsigned char *msg = (unsigned char *) content + TIMESTAMP_INDEX;
+			unsigned long long mlen;
+
+			if (dest->multipart_final)
+				msg -= 2;
+
+			mlen = content_length + (content - msg);
+			if (crypto_sign_verify_detached(sig, msg, mlen, identity->pubkey))
+				dest->signature_status = GOOD_SIGNATURE;
+			else
+				dest->signature_status = BAD_SIGNATURE;
+		}
+	}
+	else
+	{
+		dest->signature_status = NO_SIGNATURE;
+	}
 
 	/* TODO check compression flag */
 
-	content_length = src->payload_length - header_length;
 	dest->payload->length = 0;
 	bigbuffer_append(dest->payload, content, content_length);
 	bigbuffer_terminate(dest->payload);

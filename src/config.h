@@ -42,6 +42,9 @@
 extern const char * const CONFIG_FILE_NAME;
 extern const char * const DEFAULT_PUBKEY;
 extern const char * const DEFAULT_SECKEY;
+extern const char * const DEFAULT_KEYRING;
+
+struct keyring;
 
 struct windbag_config
 {
@@ -55,8 +58,10 @@ struct windbag_config
 	int sign_messages;
 	char pubkey_path[MAX_FILE_PATH];
 	char seckey_path[MAX_FILE_PATH];
+	char keyring_path[MAX_FILE_PATH];
 	unsigned char pubkey[crypto_sign_PUBLICKEYBYTES];
 	unsigned char seckey[crypto_sign_SECRETKEYBYTES];
+	struct keyring *keyring;
 };
 
 struct windbag_option

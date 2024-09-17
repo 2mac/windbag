@@ -40,6 +40,7 @@
 #include "base64.h"
 #include "keygen.h"
 #include "os.h"
+#include "util.h"
 
 static int
 prompt_yn(const char *prompt, int default_result)
@@ -160,10 +161,13 @@ encode_and_save(const unsigned char *key, size_t key_size, const char *path)
 }
 
 int
-keygen(struct windbag_config *config)
+keygen(struct windbag_config *config, int argc, char **argv)
 {
 	char default_path[MAX_FILE_PATH];
 	int rc;
+
+	UNUSED(argc);
+	UNUSED(argv);
 
 	default_config_dir_path(default_path, sizeof default_path);
 

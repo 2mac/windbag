@@ -36,6 +36,6 @@
 #include "config.h"
 
 int
-chat(struct windbag_config *config);
+chat(struct windbag_config *config, int argc, char **argv);
 
 #endif

@@ -42,6 +42,7 @@
 #include "keygen.h"
 #include "keyring.h"
 #include "os.h"
+#include "tnc2.h"
 #include "tty.h"
 #include "windbag.h"
 
@@ -88,13 +89,17 @@ main(int argc, char *argv[])
 	const char *command = "chat";
 	speed_t speed = 0;
 	char *tty = NULL, *my_call = NULL, *config_path = NULL;
-	int rc, opt, found;
+	int rc, opt, found, tnc2 = 0;
 	unsigned int i;
 
-	while ((opt = getopt(argc, argv, "C:b:c:t:")) != -1)
+	while ((opt = getopt(argc, argv, "2C:b:c:t:")) != -1)
 	{
 		switch (opt)
 		{
+		case '2':
+			tnc2 = 1;
+			break;
+
 		case 'C':
 			config_path = optarg;
 			break;
@@ -175,6 +180,9 @@ main(int argc, char *argv[])
 
 	if (speed)
 		config.tty_speed = speed;
+
+	if (tnc2 && tnc2_init(config.tty, speed))
+		return 1;
 
 	if (optind < argc)
 		command = argv[optind++];

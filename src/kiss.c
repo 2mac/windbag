@@ -30,7 +30,7 @@
  */
 
 #include <errno.h>
-#include <fcntl.h> 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -145,7 +145,7 @@ kiss_read_frame(KISS_TNC *tnc)
 		if (tnc->escape)
 		{
 			tnc->escape = 0;
-			
+
 			switch (c)
 			{
 			case TFEND:
@@ -271,7 +271,10 @@ kiss_init_serial(KISS_TNC *tnc, struct io *io, const char *path, speed_t speed)
 	tty.c_cc[VTIME] = 5;
 
 	if (tcsetattr(fd, TCSANOW, &tty) != 0)
+	{
+		close(fd);
 		return NULL;
+	}
 
 	io->read = serial_read;
 	io->write = serial_write;

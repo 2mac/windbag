@@ -9,7 +9,7 @@ LDFLAGS += -L$(PREFIX)/lib -Wl,-R$(PREFIX)/lib
 
 all: windbag
 
-windbag_deps=src/ax25.o src/base64.o src/bigbuffer.o src/callsign.o src/chat.o src/config.o src/keygen.o src/keyring.o src/kiss.o src/main.o src/tty.o src/util.o src/windbag.o
+windbag_deps=src/ax25.o src/base64.o src/bigbuffer.o src/callsign.o src/chat.o src/config.o src/keygen.o src/keyring.o src/kiss.o src/main.o src/tnc2.o src/tty.o src/util.o src/windbag.o
 windbag: $(windbag_deps)
 	./mvobjs.sh
 	$(CC) -o $@ $(windbag_deps) $(LDFLAGS)

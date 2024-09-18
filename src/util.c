@@ -37,9 +37,13 @@
 #include "util.h"
 
 int
-mkdir_recursive(const char *path, mode_t mode)
+mkdir_recursive(const char *original, mode_t mode)
 {
 	int rc;
+	char *path = strdup(original);
+
+	if (!path)
+		return ENOMEM;
 
 	rc = mkdir(path, mode);
 	if (rc == -1)
@@ -58,12 +62,8 @@ mkdir_recursive(const char *path, mode_t mode)
 
 			rc = mkdir_recursive(dirname(dpath), mode);
 			free(dpath);
-			if (rc == 0 && (rc = mkdir(path, mode)) == -1)
-			{
+			if (rc == 0 && mkdir(path, mode) == -1)
 				rc = errno;
-				if (rc == EEXIST)
-					rc = 0;
-			}
 			break;
 
 		case EEXIST:
@@ -75,5 +75,6 @@ mkdir_recursive(const char *path, mode_t mode)
 		}
 	}
 
+	free(path);
 	return rc;
 }

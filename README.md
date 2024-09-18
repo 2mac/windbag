@@ -45,7 +45,7 @@ Finally, it's time to chat! Turn on your radio and TNC, then start Windbag:
 
     $ windbag -t <tty> -c <callsign> -b <baudrate>
 
-Here, `<tty>` is the serial port for your TNC, `<callsign`> is your call sign, and `<baudrate`> is the serial port speed to use when talking to the TNC (it is NOT the baud rate that will be used over the air! see your TNC's manual for setting that.).
+Here, `<tty>` is the serial port for your TNC, `<callsign>` is your call sign, and `<baudrate>` is the serial port speed to use when talking to the TNC (it is NOT the baud rate that will be used over the air! see your TNC's manual for setting that.).
 
 [1]: https://github.com/brannondorsey/chattervox
 [2]: https://github.com/wb2osz/direwolf

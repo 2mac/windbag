@@ -29,6 +29,12 @@ To build Windbag, you need a C99 compiler, make, and libsodium.
     make
     sudo make install
 
+### NetBSD
+
+    # pkgin install libsodium
+    $ make PREFIX=/usr/pkg
+    # make install PREFIX=/usr/pkg
+
 Getting Started
 ---------------
 

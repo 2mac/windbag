@@ -141,9 +141,14 @@ main(int argc, char *argv[])
 		strncat(config_path, CONFIG_FILE_NAME, sizeof buf - strlen(buf));
 
 		if (access(config_path, F_OK) == 0)
+		{
 			rc = read_config_file(config_path, &config);
+		}
 		else
+		{
 			rc = 0;
+			memset(&config, 0, sizeof config);
+		}
 	}
 
 	if (rc)

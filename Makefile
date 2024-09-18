@@ -4,6 +4,8 @@ CFLAGS += $(STND) -O2 -Wall -Wextra -Wunreachable-code -ftrapv \
         -Wno-format-overflow -D_POSIX_C_SOURCE=2 -D_DEFAULT_SOURCE
 LDFLAGS = -lpthread -lsodium
 PREFIX=/usr/local
+CFLAGS += -I$(PREFIX)/include
+LDFLAGS += -L$(PREFIX)/lib
 
 all: windbag
 

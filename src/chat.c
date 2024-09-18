@@ -29,6 +29,7 @@
  *  THE USE OF OR OTHER DEALINGS IN THE WORK.
  */
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -214,7 +215,11 @@ chat(struct windbag_config *config, int argc, char **argv)
 			return rc;
 	}
 
-	kiss_init_serial(&tnc, &io, config->tty, config->tty_speed);
+	if (!kiss_init_serial(&tnc, &io, config->tty, config->tty_speed))
+	{
+		fprintf(stderr, "Failed to set up TNC: %s\n", strerror(errno));
+		return errno;
+	}
 
 	aio.read_frame = (ax25_frame_reader) kiss_read_frame;
 	aio.write_frame = (ax25_frame_writer) kiss_write_frame;

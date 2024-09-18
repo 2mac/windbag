@@ -350,64 +350,104 @@ int
 export_key(struct windbag_config *config, int argc, char **argv)
 {
 	int rc = 0;
-	char *callsign, *pubkey_base64;
-	struct keyring *keyring;
+	FILE *f;
+	char *callsign, *pubkey_base64 = NULL;
+	size_t bufsize;
+	struct keyring *keyring = NULL;
 	struct identity *found;
 
-	if (argc != 1)
+	switch (argc)
 	{
-		fprintf(stderr, "Usage: windbag export-key <callsign>\n");
+	case 0:
+		if (config->pubkey_path[0] == '\0')
+		{
+			fprintf(stderr, "No public key file specified in the config file.\n");
+			return -1;
+		}
+
+		f = fopen(config->pubkey_path, "r");
+		if (!f)
+		{
+			fprintf(stderr, "Error opening %s: %s\n",
+				config->pubkey_path, strerror(errno));
+			return errno;
+		}
+
+		if (getline(&pubkey_base64, &bufsize, f) == -1)
+		{
+			free(pubkey_base64);
+			fclose(f);
+			fprintf(stderr, "Error reading %s: %s\n",
+				config->pubkey_path, strerror(ENOMEM));
+			return ENOMEM;
+		}
+
+		fclose(f);
+		printf("%s", pubkey_base64);
+		free(pubkey_base64);
+		break;
+
+	case 1:
+		callsign = argv[0];
+		rc = validate_callsign(callsign);
+		if (rc)
+		{
+			fprintf(stderr, "Error in call sign: %s\n",
+				callsign_strerror(rc));
+			return -1;
+		}
+
+		sanitize_callsign(callsign);
+
+		if (config->keyring_path[0] == '\0')
+			set_default_keyring_path(config);
+
+		keyring = keyring_new();
+		if (!keyring)
+		{
+			fprintf(stderr, "Error exporting key: %s\n",
+				strerror(ENOMEM));
+			return ENOMEM;
+		}
+
+		rc = keyring_load(keyring, config->keyring_path);
+		if (rc)
+		{
+			fprintf(stderr, "Error loading keyring: %s\n",
+				strerror(rc));
+			goto end;
+		}
+
+		found = keyring_search(keyring, callsign);
+		if (!found)
+		{
+			fprintf(stderr, "No key found for %s.\n", callsign);
+			rc = -1;
+			goto end;
+		}
+
+		pubkey_base64 = base64_encode(found->pubkey,
+					sizeof found->pubkey);
+		if (!pubkey_base64)
+		{
+			rc = ENOMEM;
+			fprintf(stderr, "Error exporting key: %s\n",
+				strerror(rc));
+			goto end;
+		}
+
+		printf("%s\t%s\n", callsign, pubkey_base64);
+		break;
+
+	default:
+		fprintf(stderr, "Usage: windbag export-key [callsign]\n");
 		return -1;
 	}
 
-	callsign = argv[0];
-	rc = validate_callsign(callsign);
-	if (rc)
-	{
-		fprintf(stderr, "Error in call sign: %s\n",
-			callsign_strerror(rc));
-		return -1;
-	}
-
-	sanitize_callsign(callsign);
-
-	if (config->keyring_path[0] == '\0')
-		set_default_keyring_path(config);
-
-	keyring = keyring_new();
-	if (!keyring)
-	{
-		fprintf(stderr, "Error exporting key: %s\n", strerror(ENOMEM));
-		return ENOMEM;
-	}
-
-	rc = keyring_load(keyring, config->keyring_path);
-	if (rc)
-	{
-		fprintf(stderr, "Error loading keyring: %s\n", strerror(rc));
-		goto end;
-	}
-
-	found = keyring_search(keyring, callsign);
-	if (!found)
-	{
-		fprintf(stderr, "No key found for %s.\n", callsign);
-		rc = -1;
-		goto end;
-	}
-
-	pubkey_base64 = base64_encode(found->pubkey, sizeof found->pubkey);
-	if (!pubkey_base64)
-	{
-		rc = ENOMEM;
-		fprintf(stderr, "Error exporting key: %s\n", strerror(rc));
-		goto end;
-	}
-
-	printf("%s\t%s\n", callsign, pubkey_base64);
 
 end:
-	free(keyring);
+	if (keyring)
+		free(keyring);
 	return rc;
 }
 

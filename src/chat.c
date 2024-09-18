@@ -38,6 +38,7 @@
 #include "bigbuffer.h"
 #include "chat.h"
 #include "keygen.h"
+#include "keyring.h"
 #include "kiss.h"
 #include "util.h"
 #include "windbag.h"
@@ -208,6 +209,23 @@ chat(struct windbag_config *config, int argc, char **argv)
 		return 1;
 	}
 
+	if (config->keyring_path[0] != '\0')
+	{
+		config->keyring = keyring_new();
+		if (!config->keyring)
+		{
+			fprintf(stderr, "Failed to load keyring.\n");
+			return 1;
+		}
+
+		rc = keyring_load(config->keyring, config->keyring_path);
+		if (rc)
+		{
+			keyring_free(config->keyring);
+			return rc;
+		}
+	}
+
 	if (config->sign_messages)
 	{
 		rc = load_keypair(config);
@@ -237,6 +255,9 @@ chat(struct windbag_config *config, int argc, char **argv)
 
 	rc = chat_write(&cc);
 	pthread_cancel(read_thread);
+
+	if (config->keyring)
+		keyring_free(config->keyring);
 
 	return rc;
 }

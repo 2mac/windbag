@@ -306,7 +306,7 @@ int
 write_config_options(struct windbag_config *config,
 		const struct windbag_option *options, size_t n)
 {
-	char *empty = "\n";
+	char *empty = "";
 	FILE *f;
 	char *orig = NULL, *line, *end;
 	unsigned int i;

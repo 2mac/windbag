@@ -5,7 +5,7 @@ CFLAGS += $(STND) -O2 -Wall -Wextra -Wunreachable-code -ftrapv \
 LDFLAGS = -lpthread -lsodium
 PREFIX=/usr/local
 CFLAGS += -I$(PREFIX)/include
-LDFLAGS += -L$(PREFIX)/lib
+LDFLAGS += -L$(PREFIX)/lib -Wl,-R$(PREFIX)/lib
 
 all: windbag
 

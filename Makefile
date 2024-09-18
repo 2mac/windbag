@@ -12,5 +12,8 @@ windbag: $(windbag_deps)
 	./mvobjs.sh
 	$(CC) -o $@ $(windbag_deps) $(LDFLAGS)
 
+install: windbag
+	install -m755 windbag $(PREFIX)/bin/windbag
+
 clean:
 	rm -rf src/*.o windbag

@@ -1,7 +1,7 @@
 CC ?= cc
 STND ?= -std=c99
 CFLAGS += $(STND) -O2 -Wall -Wextra -Wunreachable-code -ftrapv \
-        -Wno-format-overflow -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE
+        -Wno-format-overflow -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE -g
 LDFLAGS = -lpthread -lsodium
 PREFIX=/usr/local
 CFLAGS += -I$(PREFIX)/include

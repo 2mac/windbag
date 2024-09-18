@@ -59,7 +59,11 @@ mkdir_recursive(const char *path, mode_t mode)
 			rc = mkdir_recursive(dirname(dpath), mode);
 			free(dpath);
 			if (rc == 0 && (rc = mkdir(path, mode) == -1))
+			{
 				rc = errno;
+				if (rc == EEXIST)
+					rc = 0;
+			}
 			break;
 
 		case EEXIST:

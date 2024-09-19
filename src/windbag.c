@@ -133,11 +133,14 @@ windbag_read_packet(struct windbag_packet *dest,
 			mlen = content_length + (content - msg);
 			identity = keyring_search(keyring,
 						src->header.src_addr);
-			if (identity && crypto_sign_verify_detached(sig, msg, mlen, identity->pubkey))
+			if (identity)
 			{
-				dest->signature_status = BAD_SIGNATURE;
+				if (crypto_sign_verify_detached(sig, msg, mlen, identity->pubkey))
+					dest->signature_status = BAD_SIGNATURE;
+				else
+					dest->signature_status = GOOD_SIGNATURE;
 			}
-			else if (!identity)
+			else
 			{
 				unsigned int i;
 
@@ -158,10 +161,6 @@ windbag_read_packet(struct windbag_packet *dest,
 						break;
 					}
 				}
-			}
-			else
-			{
-				dest->signature_status = GOOD_SIGNATURE;
 			}
 		}
 	}

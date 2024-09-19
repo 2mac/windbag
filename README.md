@@ -35,6 +35,12 @@ To build Windbag, you need a C99 compiler, make, and libsodium.
     $ make PREFIX=/usr/pkg
     # make install PREFIX=/usr/pkg
 
+### OpenBSD
+
+    # pkg_add libsodium
+    $ make
+    # make install
+
 Getting Started
 ---------------
 

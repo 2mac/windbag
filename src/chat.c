@@ -209,15 +209,15 @@ chat(struct windbag_config *config, int argc, char **argv)
 		return 1;
 	}
 
+	config->keyring = keyring_new();
+	if (!config->keyring)
+	{
+		fprintf(stderr, "Failed to make keyring.\n");
+		return 1;
+	}
+
 	if (config->keyring_path[0] != '\0')
 	{
-		config->keyring = keyring_new();
-		if (!config->keyring)
-		{
-			fprintf(stderr, "Failed to load keyring.\n");
-			return 1;
-		}
-
 		rc = keyring_load(config->keyring, config->keyring_path);
 		if (rc)
 		{
@@ -255,9 +255,7 @@ chat(struct windbag_config *config, int argc, char **argv)
 
 	rc = chat_write(&cc);
 	pthread_cancel(read_thread);
-
-	if (config->keyring)
-		keyring_free(config->keyring);
+	keyring_free(config->keyring);
 
 	return rc;
 }

@@ -137,6 +137,7 @@ main(int argc, char *argv[])
 		}
 
 		rc = read_config_file(config_path, &config);
+		strncpy(config.config_path, config_path, sizeof config.config_path - 1);
 	}
 	else
 	{
@@ -154,12 +155,21 @@ main(int argc, char *argv[])
 			rc = 0;
 			memset(&config, 0, sizeof config);
 		}
+
+		strncpy(config.config_path, config_path, sizeof config.config_path - 1);
 	}
 
 	if (rc)
 		return rc;
 
-	strncpy(config.config_path, config_path, sizeof config.config_path - 1);
+	if (config.keyring_path[0] == '\0')
+	{
+		char buf[MAX_FILE_PATH];
+		default_config_dir_path(buf, sizeof buf);
+		strncat(buf, FILE_SEPARATOR, sizeof buf - strlen(buf));
+		strncat(buf, CONFIG_FILE_NAME, sizeof buf - strlen(buf));
+		strcpy(config.keyring_path, buf);
+	}
 
 	if (my_call)
 	{

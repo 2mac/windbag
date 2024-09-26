@@ -170,6 +170,12 @@ main(int argc, char *argv[])
 		strncat(buf, CONFIG_FILE_NAME, sizeof buf - strlen(buf));
 		strcpy(config.keyring_path, buf);
 	}
+	else if (access(config.keyring_path, F_OK) == -1)
+	{
+		fprintf(stderr, "Error opening keyring file %s: %s\n",
+			config.keyring_path, strerror(errno));
+		return 1;
+	}
 
 	if (my_call)
 	{

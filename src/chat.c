@@ -219,9 +219,11 @@ chat(struct windbag_config *config, int argc, char **argv)
 	if (config->keyring_path[0] != '\0')
 	{
 		rc = keyring_load(config->keyring, config->keyring_path);
-		if (rc)
+		if (rc && rc != ENOENT)
 		{
 			keyring_free(config->keyring);
+			fprintf(stderr, "Error opening %s: %s\n",
+				config->keyring_path, strerror(errno));
 			return rc;
 		}
 	}

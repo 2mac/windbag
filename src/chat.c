@@ -222,7 +222,7 @@ chat(struct windbag_config *config, int argc, char **argv)
 		if (rc && rc != ENOENT)
 		{
 			keyring_free(config->keyring);
-			fprintf(stderr, "Error opening %s: %s\n",
+			fprintf(stderr, "Error opening keyring %s: %s\n",
 				config->keyring_path, strerror(errno));
 			return rc;
 		}

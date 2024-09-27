@@ -64,7 +64,9 @@ static int
 read_config_file(const char *config_path, struct windbag_config *config)
 {
 	int rc;
-	FILE *config_file = fopen(config_path, "r");
+	FILE *config_file;
+
+	config_file = fopen(config_path, "r");
 	if (!config_file)
 	{
 		if (errno != ENOENT)
@@ -76,10 +78,7 @@ read_config_file(const char *config_path, struct windbag_config *config)
 
 	rc = read_config(config, config_file);
 	fclose(config_file);
-	if (rc)
-		return rc;
-
-	return 0;
+	return rc;
 }
 
 int
@@ -167,7 +166,7 @@ main(int argc, char *argv[])
 		char buf[MAX_FILE_PATH];
 		default_config_dir_path(buf, sizeof buf);
 		strncat(buf, FILE_SEPARATOR, sizeof buf - strlen(buf));
-		strncat(buf, CONFIG_FILE_NAME, sizeof buf - strlen(buf));
+		strncat(buf, DEFAULT_KEYRING, sizeof buf - strlen(buf));
 		strcpy(config.keyring_path, buf);
 	}
 	else if (access(config.keyring_path, F_OK) == -1)

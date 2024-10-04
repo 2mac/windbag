@@ -200,7 +200,9 @@ main(int argc, char *argv[])
 	if (speed)
 		config.tty_speed = speed;
 
-	if (!hbaud && strlen(config.hbaud) > 0)
+	if (hbaud)
+		tnc2 = 1;
+	else if (strlen(config.hbaud) > 0)
 		hbaud = config.hbaud;
 
 	if (tnc2 && strlen(config.tty) > 0

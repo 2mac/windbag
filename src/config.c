@@ -150,6 +150,30 @@ set_tty(struct windbag_config *config, const char *args)
 }
 
 static int
+set_hbaud(struct windbag_config *config, const char *args)
+{
+	unsigned int hbaud;
+	int rc;
+
+	rc = sscanf(args, "%u", &hbaud);
+	if (rc != 1)
+	{
+		fprintf(stderr, "Syntax error in hbaud\n");
+		return 1;
+	}
+
+	if (strlen(args) > MAX_HBAUD_LEN)
+	{
+		fprintf(stderr, "hbaud exceeds max length of %d digits\n",
+			MAX_HBAUD_LEN);
+		return 1;
+	}
+
+	strcpy(config->hbaud, args);
+	return 0;
+}
+
+static int
 set_tty_speed(struct windbag_config *config, const char *args)
 {
 	speed_t speed = strtospeed(args);
@@ -194,6 +218,7 @@ static const SETTER SETTERS[] = {
 	{ "mycall", set_mycall },
 	{ "digi-path", set_digi_path },
 	{ "tty", set_tty },
+	{ "hbaud", set_hbaud },
 	{ "tty-speed", set_tty_speed },
 	{ "public-key", set_pubkey_path },
 	{ "secret-key", set_seckey_path },

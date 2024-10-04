@@ -87,11 +87,11 @@ main(int argc, char *argv[])
 	struct windbag_config config;
 	const char *command = "chat";
 	speed_t speed = 0;
-	char *tty = NULL, *my_call = NULL, *config_path = NULL;
+	char *tty = NULL, *my_call = NULL, *config_path = NULL, *hbaud = NULL;
 	int rc, opt, found, tnc2 = 0;
 	unsigned int i;
 
-	while ((opt = getopt(argc, argv, "2C:b:c:t:")) != -1)
+	while ((opt = getopt(argc, argv, "2C:b:c:h:t:")) != -1)
 	{
 		switch (opt)
 		{
@@ -115,6 +115,10 @@ main(int argc, char *argv[])
 
 		case 'c':
 			my_call = optarg;
+			break;
+
+		case 'h':
+			hbaud = optarg;
 			break;
 
 		case 't':
@@ -196,7 +200,11 @@ main(int argc, char *argv[])
 	if (speed)
 		config.tty_speed = speed;
 
-	if (tnc2 && tnc2_init(config.tty, speed))
+	if (!hbaud && strlen(config.hbaud) > 0)
+		hbaud = config.hbaud;
+
+	if (tnc2 && strlen(config.tty) > 0
+		&& tnc2_init(config.tty, speed, hbaud))
 		return 1;
 
 	if (optind < argc)

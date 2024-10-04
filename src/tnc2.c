@@ -38,7 +38,7 @@
 #include "tnc2.h"
 
 int
-tnc2_init(const char *path, speed_t speed)
+tnc2_init(const char *path, speed_t speed, const char *hbaud)
 {
 	int fd;
 	struct termios tty;
@@ -77,6 +77,9 @@ tnc2_init(const char *path, speed_t speed)
 
 	dprintf(fd, "TC 1\rTN 2,1\r\n"); /* turn on Kenwood radio TNC */
 	sleep(1);
+
+	if (hbaud)
+		dprintf(fd, "HBAUD %s\r", hbaud);
 
 	dprintf(fd, "KISS ON\rRESTART\r\n");
 	sleep(2);

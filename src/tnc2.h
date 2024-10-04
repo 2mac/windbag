@@ -35,6 +35,6 @@
 #include <termios.h>
 
 int
-tnc2_init(const char *tty, speed_t speed);
+tnc2_init(const char *tty, speed_t speed, const char *hbaud);
 
 #endif

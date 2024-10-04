@@ -38,6 +38,7 @@
 #include "ax25.h"
 
 #define MAX_FILE_PATH 1025
+#define MAX_HBAUD_LEN 6
 
 extern const char * const CONFIG_FILE_NAME;
 extern const char * const DEFAULT_PUBKEY;
@@ -53,6 +54,7 @@ struct windbag_config
 	char my_call[AX25_ADDR_MAX];
 	char digi_path[AX25_MAX_ADDRS - 2][AX25_ADDR_MAX];
 	char tty[MAX_FILE_PATH];
+	char hbaud[MAX_HBAUD_LEN + 1];
 	unsigned int tty_speed;
 
 	int sign_messages;
